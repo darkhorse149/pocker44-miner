@@ -91,6 +91,7 @@ def main():
 
     rows, y, dates = load_examples(args.data_dir, feature_set=args.feature_set)
     feat_names = sorted({k for r in rows for k in r})
+    train_chunk_size = int(np.median([float(r.get("hand_count", 0.0)) for r in rows]))
     X = np.array([[float(r.get(n, 0.0)) for n in feat_names] for r in rows], dtype=np.float64)
     uniq = sorted(set(dates.tolist()))
     print(f"examples={len(y)} feats={len(feat_names)} dates={len(uniq)} ({uniq[0]}..{uniq[-1]}) "
@@ -157,6 +158,7 @@ def main():
         "feature_set": args.feature_set,
         "ensemble_combiner": "mean(lgbm,xgb,extratrees,rf)",
         "conformal_threshold": T, "calib_window_days": args.calib_window, "buffer_coef": args.buffer,
+        "train_chunk_size": train_chunk_size, "bag": 5,
         "oof_ap": round(float(oof_ap), 5), "benchmark_rows": int(len(y)),
         "train_source_dates": uniq, "feature_count": len(feat_names),
         "repo_url": args.repo_url, "repo_commit": args.repo_commit,
