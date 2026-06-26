@@ -2,8 +2,9 @@
 # Poker44 bump miner launcher. Set WALLET_NAME/HOTKEY (and optionally AXON_PORT).
 set -euo pipefail
 cd "$(dirname "$0")"
-WALLET_NAME="${WALLET_NAME:?set WALLET_NAME}"
-HOTKEY="${HOTKEY:?set HOTKEY}"
+# Defaults target the registered miner pes/pes01 (uid 102 on netuid 126).
+WALLET_NAME="${WALLET_NAME:-pes}"
+HOTKEY="${HOTKEY:-pes01}"
 AXON_PORT="${AXON_PORT:-8091}"
 NETUID="${NETUID:-126}"
 NETWORK="${NETWORK:-finney}"

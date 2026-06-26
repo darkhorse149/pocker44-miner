@@ -4,7 +4,7 @@ module.exports = { apps: [{
   script: "neurons/miner.py",
   interpreter: "python",
   cwd: __dirname,
-  args: "--netuid 126 --wallet.name CHANGE_ME --wallet.hotkey CHANGE_ME " +
+  args: "--netuid 126 --wallet.name pes --wallet.hotkey pes01 " +
         "--subtensor.network finney --axon.port 8091 " +
         "--blacklist.force_validator_permit --logging.info",
   env: { POKER44_BUMP_MODEL: __dirname + "/models/bump_model.joblib" },

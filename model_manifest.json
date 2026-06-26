@@ -31,8 +31,8 @@
     "poker44_bump/payload_view.py": "9c8058e71dc27837b8658da020c82b047d269425d430acb4928faedad54b22a4"
   },
   "artifact_sha256": "07ae03042d81109aa5825495632b89da0eeeff228b2bc603ecb03f4cf1f167d6",
-  "repo_url": "https://github.com/REPLACE_ME/poker44-bump",
-  "repo_commit": "PENDING",
+  "repo_url": "https://github.com/eureka0928/pocker44-miner",
+  "repo_commit": "resolved-at-runtime-from-git-HEAD",
   "train_chunk_size": 30,
   "bag": 5
 }
