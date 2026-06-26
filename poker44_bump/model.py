@@ -49,6 +49,8 @@ class BumpModel:
         metadata: Dict[str, Any] | None = None,
         lo: float = 0.02,
         hi: float = 0.98,
+        chunk_models: Sequence[Any] | None = None,
+        meta_model: Any | None = None,
     ) -> None:
         self.base_models = list(base_models)
         self.feature_names = list(feature_names)
@@ -56,6 +58,11 @@ class BumpModel:
         self.lo = float(lo)
         self.hi = float(hi)
         self.metadata = dict(metadata or {})
+        # v5: optional chunk-level learner(s) (ChunkSetTransformer) blended with the
+        # tree ensemble. meta_model (logistic) stacks [tree_mean_prob, chunk_prob];
+        # if absent, fall back to a simple mean. Both empty => v4 tree-only behavior.
+        self.chunk_models = list(chunk_models or [])
+        self.meta_model = meta_model
         # size-invariance: subsample live chunks to the training size, bag over draws
         self.train_chunk_size = int(self.metadata.get("train_chunk_size", 0)) or 0
         self.bag = int(self.metadata.get("bag", 5))
@@ -106,11 +113,27 @@ class BumpModel:
     def predict_raw(self, chunks: Sequence[List[dict]]) -> np.ndarray:
         if not chunks:
             return np.zeros((0,), dtype=np.float64)
-        out = np.empty(len(chunks), dtype=np.float64)
-        for i, c in enumerate(chunks):
-            rows = self._rows_for_chunk(list(c or []))
-            out[i] = float(np.mean(self._base_raw(rows)))  # bag-average over subsamples
-        return out
+        clean = [list(c or []) for c in chunks]
+        tree = np.empty(len(clean), dtype=np.float64)
+        for i, c in enumerate(clean):
+            rows = self._rows_for_chunk(c)
+            tree[i] = float(np.mean(self._base_raw(rows)))  # bag-average over subsamples
+        cms = getattr(self, "chunk_models", None) or []
+        if not cms:
+            return tree
+        # v5: blend tree ensemble with chunk-level learner(s) (ChunkSetTransformer)
+        cols = []
+        for cm in cms:
+            proba = np.asarray(cm.predict_proba(clean))
+            cols.append(proba[:, 1] if proba.ndim == 2 else proba)
+        st = np.mean(np.vstack(cols), axis=0)
+        meta = getattr(self, "meta_model", None)
+        if meta is not None:
+            Z = np.column_stack([tree, st])
+            p = np.asarray(meta.predict_proba(Z))
+            return (p[:, 1] if p.ndim == 2 else p).astype(np.float64)
+        w = float(self.metadata.get("blend_tree_weight", 0.5))
+        return w * tree + (1.0 - w) * st
 
     def _topk_squeeze(self, raw: np.ndarray) -> List[float]:
         """Batch-relative safety budget (port of the live leader's topk_v1).

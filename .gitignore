@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 _sweep*.joblib
 models/_*.joblib
+models/v5_stacked.joblib
+models/bump_model_v4.joblib
+_ab_raw_cache.npz
