@@ -9,6 +9,8 @@ AXON_PORT="${AXON_PORT:-8091}"
 NETUID="${NETUID:-126}"
 NETWORK="${NETWORK:-finney}"
 export POKER44_BUMP_MODEL="${POKER44_BUMP_MODEL:-$(pwd)/models/bump_model.joblib}"
+# bittensor 10.x ignores CLI args unless this is explicitly disabled (defaults to "true").
+export BT_NO_PARSE_CLI_ARGS=0
 
 # Accept any metagraph validator with permit (auto-adapts). To restrict instead,
 # replace --blacklist.force_validator_permit with:

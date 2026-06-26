@@ -11,7 +11,9 @@ Run:
     --subtensor.network finney --axon.port 8091 \
     --blacklist.allowed_validator_hotkeys <vali_hotkey...>
 """
-from __future__ import annotations
+# NOTE: do NOT add `from __future__ import annotations` here — bittensor's
+# axon.attach() introspects forward()'s annotations at runtime with issubclass(),
+# which fails if they are stringized. Keep annotations as real class objects.
 import os, time, hashlib, subprocess
 from pathlib import Path
 from typing import Tuple
