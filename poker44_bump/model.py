@@ -122,6 +122,8 @@ class BumpModel:
         (the validator sends one window of chunks per call)."""
         cfg = getattr(self, "topk_cfg", {}) or {}
         frac = float(cfg.get("positive_fraction", 0.30))
+        import os
+        frac = float(os.getenv("POKER44_TOPK_FRAC", frac))   # per-process override for live A/B across keys
         pf = float(cfg.get("positive_floor", 0.501))
         pc = float(cfg.get("positive_ceiling", 0.509))
         nc = float(cfg.get("negative_ceiling", 0.49))
