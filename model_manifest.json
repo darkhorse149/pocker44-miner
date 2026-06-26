@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "open_source": true,
+  "model_name": "poker44-bump-robust",
+  "model_version": "bump-conformal-v3-ext11",
+  "framework": "tree-ensemble+conformal",
+  "feature_set": "ext",
+  "license": "MIT",
+  "inference_mode": "local-joblib",
+  "conformal_threshold": 0.8773205786737311,
+  "buffer_coef": 1.2,
+  "oof_ap": 0.86301,
+  "benchmark_rows": 458,
+  "feature_count": 304,
+  "ensemble_combiner": "mean(lgbm,xgb,extratrees,rf)",
+  "training_data_sources": [
+    "released_training_benchmark"
+  ],
+  "private_data_attestation": "No validator-private data used; released benchmark labels only.",
+  "implementation_files": [
+    "neurons/miner.py",
+    "poker44_bump/model.py",
+    "poker44_bump/features.py",
+    "poker44_bump/features_ext.py",
+    "poker44_bump/payload_view.py"
+  ],
+  "implementation_sha256": {
+    "poker44_bump/model.py": "dc736155ffce26fc628019b9cf3c65a004019d562cf6a007fd65be0f4ed720c6",
+    "poker44_bump/features.py": "9851966e1640f9d57034997ecb3aae22567a0360d451e560659029cac087d927",
+    "poker44_bump/features_ext.py": "80f088fc5e03d384c7edec92ca3f58639d9a085ac03b335c0f4eeec3f2e2033f",
+    "poker44_bump/payload_view.py": "9c8058e71dc27837b8658da020c82b047d269425d430acb4928faedad54b22a4"
+  },
+  "artifact_sha256": "19e0f2507294813cf482920801b0579e20b3cd445c1e7166167e913048275a57",
+  "repo_url": "https://github.com/REPLACE_ME/poker44-bump",
+  "repo_commit": "PENDING"
+}
