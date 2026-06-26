@@ -9,3 +9,5 @@ models/v5_stacked.joblib
 models/bump_model_v4.joblib
 _ab_raw_cache.npz
 models/v6_stacked.joblib
+models/bump_model_v8.joblib
+scratchpad/
