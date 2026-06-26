@@ -8,7 +8,7 @@ module.exports = { apps: [{
   interpreter: __dirname + "/.venv/bin/python",
   cwd: __dirname,
   args: "--netuid 126 --wallet.name pes --wallet.hotkey pes02 " +
-        "--subtensor.network finney --axon.port 8092 " +
+        "--subtensor.network finney --axon.port 8093 " +
         "--blacklist.force_validator_permit --logging.info",
   // pes02 now runs v5 (full stacked tree pipeline + topk) at frac=0.15 — a clean
   // live A/B vs pes01 (v4 trees + topk frac=0.15): same head, different model.
