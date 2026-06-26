@@ -2,8 +2,8 @@
   "schema_version": "1",
   "open_source": true,
   "model_name": "poker44-bump-robust",
-  "model_version": "bump-conformal-v3-ext11",
-  "framework": "tree-ensemble+conformal",
+  "model_version": "bump-topk-v4-ext11",
+  "framework": "tree-ensemble+topk-safety-budget",
   "feature_set": "ext",
   "license": "MIT",
   "inference_mode": "local-joblib",
@@ -25,14 +25,15 @@
     "poker44_bump/payload_view.py"
   ],
   "implementation_sha256": {
-    "poker44_bump/model.py": "5554159c96412f6fad64714beed85f498f50a746a50596725628817fd0551d4f",
+    "poker44_bump/model.py": "3cae7a16260a306a3ff1a39daf28220f508c0e095f21aa7e98c976691fd4461e",
     "poker44_bump/features.py": "9851966e1640f9d57034997ecb3aae22567a0360d451e560659029cac087d927",
     "poker44_bump/features_ext.py": "80f088fc5e03d384c7edec92ca3f58639d9a085ac03b335c0f4eeec3f2e2033f",
     "poker44_bump/payload_view.py": "9c8058e71dc27837b8658da020c82b047d269425d430acb4928faedad54b22a4"
   },
-  "artifact_sha256": "07ae03042d81109aa5825495632b89da0eeeff228b2bc603ecb03f4cf1f167d6",
+  "artifact_sha256": "39a24e101ac7bff2549576e5b904683fe388a1722d5a40dd4139ca7c3ad19844",
   "repo_url": "https://github.com/eureka0928/pocker44-miner",
   "repo_commit": "resolved-at-runtime-from-git-HEAD",
   "train_chunk_size": 30,
-  "bag": 5
+  "bag": 5,
+  "scoring_head": "topk_v1 (batch-relative safety budget, positive_fraction=0.15, full-chunk)"
 }

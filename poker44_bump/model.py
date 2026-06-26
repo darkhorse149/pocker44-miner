@@ -12,6 +12,7 @@ DIRECTLY to the incoming (already validator-sanitized) chunk.
 """
 from __future__ import annotations
 import hashlib
+import math
 from typing import Any, Dict, List, Sequence
 import numpy as np
 
@@ -58,6 +59,12 @@ class BumpModel:
         # size-invariance: subsample live chunks to the training size, bag over draws
         self.train_chunk_size = int(self.metadata.get("train_chunk_size", 0)) or 0
         self.bag = int(self.metadata.get("bag", 5))
+        # subsampling OFF by default for full-chunk scoring (matches live leaders);
+        # the topk head is batch-relative so absolute size calibration matters less.
+        self.subsample = bool(self.metadata.get("subsample", False))
+        # scoring head: "conformal" (fixed-T map) or "topk" (batch-relative safety budget)
+        self.head_mode = str(self.metadata.get("head_mode", "conformal"))
+        self.topk_cfg = dict(self.metadata.get("topk_cfg", {}) or {})
 
     # ---- feature path ----
     def _extract(self, chunk: List[dict]) -> Dict[str, float]:
@@ -69,9 +76,12 @@ class BumpModel:
 
     def _rows_for_chunk(self, chunk: List[dict]) -> np.ndarray:
         """One or more aligned feature rows. If the chunk is larger than the
-        training size, return `bag` size-matched subsample rows (size-invariance)."""
+        training size AND subsampling is enabled, return `bag` size-matched
+        subsample rows (size-invariance). Otherwise score the FULL chunk
+        (matches what the live leaders do — more hands = stronger collision
+        signal)."""
         ts = self.train_chunk_size
-        if ts and len(chunk) > ts:
+        if getattr(self, "subsample", True) and ts and len(chunk) > ts:
             rows = []
             for b in range(max(1, self.bag)):
                 idx = _subsample_indices(len(chunk), ts, salt=f"{len(chunk)}:{b}")
@@ -102,8 +112,45 @@ class BumpModel:
             out[i] = float(np.mean(self._base_raw(rows)))  # bag-average over subsamples
         return out
 
+    def _topk_squeeze(self, raw: np.ndarray) -> List[float]:
+        """Batch-relative safety budget (port of the live leader's topk_v1).
+
+        Forces only the top `positive_fraction` of this batch above 0.5, into a
+        razor band [floor, ceiling]; pushes the rest into [0, neg_ceiling].
+        Ranking (hence AP) is preserved, FPR is driven toward 0 with a large
+        margin, and recall is tuned via the fraction. Applied per query batch
+        (the validator sends one window of chunks per call)."""
+        cfg = getattr(self, "topk_cfg", {}) or {}
+        frac = float(cfg.get("positive_fraction", 0.30))
+        pf = float(cfg.get("positive_floor", 0.501))
+        pc = float(cfg.get("positive_ceiling", 0.509))
+        nc = float(cfg.get("negative_ceiling", 0.49))
+        raw = np.asarray(raw, dtype=np.float64)
+        n = len(raw)
+        out = np.zeros(n, dtype=np.float64)
+        if n == 0:
+            return []
+        k = max(0, min(n, int(math.floor(n * frac))))
+        order = np.argsort(-raw, kind="stable")           # high->low
+        pos_idx, neg_idx = order[:k], order[k:]
+        if k > 0:
+            denom = max(1, k - 1)
+            for rank, i in enumerate(pos_idx):
+                rel = 1.0 - (rank / denom)
+                out[i] = pf + rel * (pc - pf)
+        if len(neg_idx) > 0:
+            nv = raw[neg_idx]
+            mn, mx = float(nv.min()), float(nv.max())
+            span = max(mx - mn, 1e-9)
+            for i in neg_idx:
+                rel = (float(raw[i]) - mn) / span
+                out[i] = max(0.0, min(nc, rel * nc))
+        return [float(v) for v in out]
+
     def predict_chunk_scores(self, chunks: Sequence[List[dict]]) -> List[float]:
         raw = self.predict_raw(chunks)
+        if getattr(self, "head_mode", "conformal") == "topk":
+            return self._topk_squeeze(raw)
         final = conformal_map(raw, self.threshold, self.lo, self.hi)
         return [float(v) for v in final]
 

@@ -147,16 +147,65 @@ def main():
     print(f"conformal T={T:.4f} buffer={buffer_used} (auto) recent human max={hmax:.4f} q90={hq90:.4f} window={args.calib_window}d")
     print(f"per-date OOF @T: mean_reward={mr:.3f} cliff_hits={cliff}/{len(uniq)} max_fpr={mfpr:.3f}")
 
+    # ---- topk head: AUTO-SELECT positive_fraction over 40-chunk OOF windows ----
+    # The validator sends one ~40-chunk window per query and the topk squeeze is
+    # batch-relative, so tune over 40-chunk windows (in load order) not per-date.
+    def topk_squeeze(raw, frac, pf=0.501, pc=0.509, nc=0.49):
+        rawa = np.asarray(raw, float); m = len(rawa); o = np.zeros(m)
+        k = max(0, min(m, int(np.floor(m*frac))))
+        order = np.argsort(-rawa, kind="stable"); pos, neg = order[:k], order[k:]
+        if k > 0:
+            dn = max(1, k-1)
+            for rk, i in enumerate(pos): o[i] = pf + (1.0-rk/dn)*(pc-pf)
+        if len(neg) > 0:
+            nv = rawa[neg]; mn, mx = nv.min(), nv.max(); sp = max(mx-mn, 1e-9)
+            for i in neg: o[i] = max(0.0, min(nc, (rawa[i]-mn)/sp*nc))
+        return o
+    WIN = 40
+    nwin = len(oof)//WIN
+    def eval_frac(frac):
+        R, F = [], []
+        for w in range(nwin):
+            sl = slice(w*WIN, (w+1)*WIN)
+            sc = topk_squeeze(oof[sl], frac); yy = y[sl].astype(int)
+            preds = (sc >= 0.5).astype(int)
+            tp = ((preds==1)&(yy==1)).sum(); fp = ((preds==1)&(yy==0)).sum()
+            tn = ((preds==0)&(yy==0)).sum(); fn = ((preds==0)&(yy==1)).sum()
+            fpr = fp/max(tn+fp,1); rec = tp/max(tp+fn,1)
+            a = average_precision_score(yy, sc) if (yy.max()==1 and yy.min()==0) else 0.0
+            saf = 0.0 if fpr>=0.10 else (1-fpr)**2
+            R.append((0.65*a+0.35*rec)*saf); F.append(fpr)
+        return (float(np.mean(R)) if R else 0.0, float(np.max(F)) if F else 0.0,
+                sum(f>=0.10 for f in F))
+    topk_frac = 0.15
+    if nwin >= 2:
+        bestf = None
+        for frac in [round(0.10+0.025*k, 3) for k in range(0, 17)]:  # 0.10..0.50
+            mrk, maxf, cl = eval_frac(frac)
+            # safety-first: 0 cliffs AND max_fpr below margin, then max reward
+            key = (cl == 0 and maxf < 0.03, mrk)
+            if bestf is None or key > bestf[0]:
+                bestf = (key, frac, mrk, maxf, cl)
+        topk_frac = bestf[1]
+        print(f"topk head auto frac={topk_frac} over {nwin} OOF windows: "
+              f"mean_reward={bestf[2]:.3f} max_fpr={bestf[3]:.3f} cliffs={bestf[4]}")
+
     # ---- refit on ALL data, save ----
     final_models = make_ensemble(args.seed)
     for m in final_models:
         m.fit(X, y)
     meta = {
         "model_name": "poker44-bump-robust",
-        "model_version": "bump-conformal-v3-ext11" if args.feature_set == "ext" else "bump-conformal-v1",
-        "framework": "tree-ensemble+conformal",
+        "model_version": "bump-topk-v4-ext11" if args.feature_set == "ext" else "bump-topk-v1",
+        "framework": "tree-ensemble+topk-safety-budget",
         "feature_set": args.feature_set,
         "ensemble_combiner": "mean(lgbm,xgb,extratrees,rf)",
+        # scoring head: batch-relative topk safety budget (beats fixed-T conformal offline)
+        "head_mode": "topk",
+        "topk_cfg": {"positive_fraction": topk_frac,
+                     "positive_floor": 0.501, "positive_ceiling": 0.509, "negative_ceiling": 0.49},
+        # full-chunk scoring (no subsample) — more hands = stronger collision signal, matches leaders
+        "subsample": False,
         "conformal_threshold": T, "calib_window_days": args.calib_window, "buffer_coef": args.buffer,
         "train_chunk_size": train_chunk_size, "bag": 5,
         "oof_ap": round(float(oof_ap), 5), "benchmark_rows": int(len(y)),
