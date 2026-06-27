@@ -1,7 +1,8 @@
-// Fourth miner on hotkey pes04 (uid 109) — serves v9: lean/robustness-first model
-// (74 cross-date-robust base feats, NO cx_, heavily-regularized single LightGBM) +
-// conservative topk (frac 0.15). Tests the live-generalization hypothesis (simpler
-// transfers better live) against pes02 (v5) and pes03 (v6). Fastest model: 2.5ms/chunk.
+// Fourth miner on hotkey pes04 (uid 109) — serves v14: v10 avg-ensemble (3 LGBM+ET+RF) over
+// base293 + 8 REPETITION-INVARIANT rp_ feats (generator-agnostic self-similarity: Vendi, set
+// log-det, gzip compression ratio, entropy-rate, exact-dup fractions), NO cx_ (known live-loser),
+// topk frac 0.15, full-chunk. LODO per-date AP 0.9116. Isolates the live value of rp_ features
+// vs pes03=v10 (same ensemble, no rp_). ~4ms/chunk.
 //   pm2 delete poker44_bump_miner_pes04 && pm2 start ecosystem.pes04.config.js
 module.exports = { apps: [{
   name: "poker44_bump_miner_pes04",
@@ -12,7 +13,7 @@ module.exports = { apps: [{
         "--subtensor.network finney --axon.port 8095 " +
         "--blacklist.force_validator_permit --logging.info",
   env: {
-    POKER44_BUMP_MODEL: __dirname + "/models/bump_model_v9.joblib",
+    POKER44_BUMP_MODEL: __dirname + "/models/bump_model_v14.joblib",
     BT_NO_PARSE_CLI_ARGS: "0",
     POKER44_TOPK_FRAC: "0.15",
   },
