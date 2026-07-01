@@ -17,6 +17,7 @@ module.exports = { apps: [{
     POKER44_BUMP_MODEL: __dirname + "/models/bump_model_v10.joblib",
     BT_NO_PARSE_CLI_ARGS: "0",
     POKER44_TOPK_FRAC: "0.15",
+    POKER44_CAPTURE: "1",
   },
   autorestart: true, max_restarts: 50, restart_delay: 5000,
 }]};

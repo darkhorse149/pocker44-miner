@@ -1,8 +1,9 @@
-// Fourth miner on hotkey pes04 (uid 109) — serves v14: v10 avg-ensemble (3 LGBM+ET+RF) over
-// base293 + 8 REPETITION-INVARIANT rp_ feats (generator-agnostic self-similarity: Vendi, set
-// log-det, gzip compression ratio, entropy-rate, exact-dup fractions), NO cx_ (known live-loser),
-// topk frac 0.15, full-chunk. LODO per-date AP 0.9116. Isolates the live value of rp_ features
-// vs pes03=v10 (same ensemble, no rp_). ~4ms/chunk.
+// pes04 (uid 109) — A/B 2026-06-30: serves v22 (SEQUENCE TRANSFORMER, replaces v20). v22 = per-hand
+// action-ORDER transformer + cross-hand set-pool + repetition relation (the phasberg-seq vs d0-noseq
+// hypothesis). MOST un-degenerate on live (raw-std 0.081 > v19 0.066) but LOWEST benchmark AP (0.62)
+// = a gamble (its live spread may be transferable signal OR noise; only live A/B resolves it).
+// BENCHMARK-ONLY = honest. A/B fleet: pes01=v19(saninv-trees) pes04=v22(seq-transformer) vs controls
+// pes03=v10 pes02=v5. Capture stays on passively. topk 0.15.
 //   pm2 delete poker44_bump_miner_pes04 && pm2 start ecosystem.pes04.config.js
 module.exports = { apps: [{
   name: "poker44_bump_miner_pes04",
@@ -13,9 +14,10 @@ module.exports = { apps: [{
         "--subtensor.network finney --axon.port 8095 " +
         "--blacklist.force_validator_permit --logging.info",
   env: {
-    POKER44_BUMP_MODEL: __dirname + "/models/bump_model_v14.joblib",
+    POKER44_BUMP_MODEL: __dirname + "/models/bump_model_v22.joblib",
     BT_NO_PARSE_CLI_ARGS: "0",
     POKER44_TOPK_FRAC: "0.15",
+    POKER44_CAPTURE: "1",
   },
   autorestart: true, max_restarts: 50, restart_delay: 5000,
 }]};

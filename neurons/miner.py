@@ -43,6 +43,11 @@ from poker44.validator.synapse import DetectionSynapse
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from poker44_bump.model import BumpModel  # noqa: E402
+try:
+    from poker44_bump.live_capture import capture as _live_capture  # noqa: E402
+except Exception:
+    def _live_capture(*a, **k):  # capture optional; never break import
+        return None
 
 
 def _sha256(path: Path) -> str:
@@ -75,15 +80,17 @@ class Miner(BaseMinerNeuron):
             "framework": md.get("framework", "tree-ensemble+conformal"),
             "license": "MIT",
             "inference_mode": "local-joblib",
-            "training_data_statement": (
+            "training_data_statement": md.get("training_data_statement") or (
                 f"Trained on {md.get('benchmark_rows','?')} released benchmark chunks "
                 f"(groundTruth labels) across dates {md.get('train_source_dates',['?'])[0]}.."
                 f"{md.get('train_source_dates',['?'])[-1]}. Cliff-robust conformal head "
                 f"(T={md.get('conformal_threshold'):.4f})."
             ),
-            "training_data_sources": ["released_training_benchmark"],
-            "private_data_attestation": "No validator-private data used; released benchmark labels only.",
-            "data_attestation": "No validator-private data used; released benchmark labels only.",
+            "training_data_sources": md.get("training_data_sources") or ["released_training_benchmark"],
+            # attestation is MODEL-DRIVEN: benchmark-only models keep the default; models that
+            # use the live query distribution must declare it truthfully via metadata.
+            "private_data_attestation": md.get("data_attestation") or "No validator-private data used; released benchmark labels only.",
+            "data_attestation": md.get("data_attestation") or "No validator-private data used; released benchmark labels only.",
             "implementation_files": ["neurons/miner.py", "poker44_bump/model.py",
                                      "poker44_bump/features.py", "poker44_bump/payload_view.py"],
             "implementation_sha256": _sha256(Path(__file__).resolve()),
@@ -92,7 +99,7 @@ class Miner(BaseMinerNeuron):
         }
         bt.logging.info(
             f"\U0001f916 Poker44 bump miner | T={self.model.threshold:.4f} "
-            f"feats={len(self.model.feature_names)} oof_ap={md.get('oof_ap')}"
+            f"feats={len(getattr(self.model, 'feature_names', []) or [])} oof_ap={md.get('oof_ap')}"
         )
 
     async def forward(self, synapse: DetectionSynapse) -> DetectionSynapse:
@@ -104,6 +111,12 @@ class Miner(BaseMinerNeuron):
             bt.logging.warning(f"scoring failed ({err}); returning 0.5 for all chunks")
             scores = [0.5] * len(chunks)
         scores = [max(0.0, min(1.0, float(s))) for s in scores]
+        try:
+            _hk = str(getattr(self.config.wallet, "hotkey", "self"))
+            _vk = str(getattr(getattr(synapse, "dendrite", None), "hotkey", "") or "")
+            _live_capture(chunks, scores, _hk, _vk)
+        except Exception:
+            pass
         synapse.risk_scores = scores
         synapse.predictions = [s >= 0.5 for s in scores]
         synapse.model_manifest = dict(self.model_manifest)
