@@ -75,8 +75,10 @@ class Miner(BaseMinerNeuron):
             "open_source": True,
             "repo_url": repo_url,
             "repo_commit": repo_commit,
-            "model_name": md.get("model_name", "poker44-bump-robust"),
-            "model_version": md.get("model_version", "bump-conformal-v1"),
+            # Per-key identity override so distinct hotkeys publish a distinct,
+            # original model identity (env wins over the artifact default).
+            "model_name": os.getenv("POKER44_MODEL_NAME", md.get("model_name", "poker44-bump-robust")),
+            "model_version": os.getenv("POKER44_MODEL_VERSION", md.get("model_version", "bump-conformal-v1")),
             "framework": md.get("framework", "tree-ensemble+conformal"),
             "license": "MIT",
             "inference_mode": "local-joblib",
